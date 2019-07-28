@@ -3,7 +3,7 @@
 #include "include/pika_binlog_transverter.h"
 
 PikaBinlogParser::PikaBinlogParser()
-    : parse_status_(kBinlogParserNone), processed_item_content_len_(0) {
+    : processed_item_content_len_(0), parse_status_(kBinlogParserNone) {
 } 
 
 PikaBinlogParser::~PikaBinlogParser() {
