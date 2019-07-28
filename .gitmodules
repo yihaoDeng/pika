@@ -13,3 +13,9 @@
 [submodule "third/pink"]
 	path = third/pink
 	url = https://github.com/Qihoo360/pink.git
+[submodule "third/moka"]
+	path = third/moka
+	url = https://github.com/yihaoDeng/moka.git
+[submodule "third/rdbparse"]
+	path = third/rdbparse
+	url = https://github.com/yihaoDeng/rdbparse.git
