@@ -12,7 +12,7 @@
 	url = https://github.com/Axlgrep/blackwidow.git
 [submodule "third/pink"]
 	path = third/pink
-	url = https://github.com/yihaoDeng/pink.git
+	url = https://github.com/Qihoo360/pink.git
 [submodule "third/moka"]
 	path = third/moka
 	url = https://github.com/yihaoDeng/moka.git
