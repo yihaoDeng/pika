@@ -22,3 +22,6 @@
 [submodule "third/monica"]
 	path = third/monica
 	url = https://github.com/yihaoDeng/monica.git
+[submodule "third/googletest"]
+	path = third/googletest
+	url = https://github.com/google/googletest.git
