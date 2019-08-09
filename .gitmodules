@@ -12,10 +12,13 @@
 	url = https://github.com/Axlgrep/blackwidow.git
 [submodule "third/pink"]
 	path = third/pink
-	url = https://github.com/Qihoo360/pink.git
+	url = https://github.com/yihaoDeng/pink.git
 [submodule "third/moka"]
 	path = third/moka
 	url = https://github.com/yihaoDeng/moka.git
 [submodule "third/rdbparse"]
 	path = third/rdbparse
 	url = https://github.com/yihaoDeng/rdbparse.git
+[submodule "third/monica"]
+	path = third/monica
+	url = https://github.com/yihaoDeng/monica.git
