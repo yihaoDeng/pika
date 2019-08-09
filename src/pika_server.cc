@@ -60,13 +60,13 @@ PikaServer::PikaServer() :
     LOG(FATAL) << "ServerInit iotcl error";
   }
 
-  //Create blackwidow handle
-  blackwidow::BlackwidowOptions bw_option;
+  //Create monica handle
+  monica::MonicaOptions bw_option;
   RocksdbOptionInit(&bw_option);
 
   std::string db_path = g_pika_conf->db_path();
-  LOG(INFO) << "Prepare Blackwidow DB...";
-  db_ = std::shared_ptr<blackwidow::BlackWidow>(new blackwidow::BlackWidow());
+  LOG(INFO) << "Prepare monica DB...";
+  db_ = std::shared_ptr<monica::Monica>(new monica::Monica());
   rocksdb::Status s = db_->Open(bw_option, db_path);
   assert(db_);
   assert(s.ok());
@@ -243,7 +243,7 @@ void PikaServer::Schedule(pink::TaskFunc func, void* arg) {
   pika_thread_pool_->Schedule(func, arg);
 }
 
-void PikaServer::RocksdbOptionInit(blackwidow::BlackwidowOptions* bw_option) {
+void PikaServer::RocksdbOptionInit(monica::MonicaOptions* bw_option) {
   bw_option->options.create_if_missing = true;
   bw_option->options.keep_log_file_num = 10;
   bw_option->options.max_manifest_file_size = 64 * 1024 * 1024;
@@ -426,7 +426,7 @@ void PikaServer::DeleteSlave(int fd) {
  */
 bool PikaServer::ChangeDb(const std::string& new_path) {
 
-  blackwidow::BlackwidowOptions bw_option;
+  monica::MonicaOptions bw_option;
   RocksdbOptionInit(&bw_option);
 
   std::string db_path = g_pika_conf->db_path();
@@ -450,7 +450,7 @@ bool PikaServer::ChangeDb(const std::string& new_path) {
     return false;
   }
 
-  db_.reset(new blackwidow::BlackWidow());
+  db_.reset(new monica::Monica());
   rocksdb::Status s = db_->Open(bw_option, db_path);
   assert(db_);
   assert(s.ok());
@@ -984,7 +984,7 @@ bool PikaServer::InitBgsaveEnv() {
 // Prepare bgsave env, need bgsave_protector protect
 bool PikaServer::InitBgsaveEngine() {
   delete bgsave_engine_;
-  rocksdb::Status s = blackwidow::BackupEngine::Open(db().get(), &bgsave_engine_);
+  rocksdb::Status s = monica::BackupEngine::Open(db().get(), &bgsave_engine_);
   if (!s.ok()) {
     LOG(WARNING) << "open backup engine failed " << s.ToString();
     return false;
@@ -1252,7 +1252,7 @@ void PikaServer::AutoCompactRange() {
           >= interval * 3600) {
       gettimeofday(&last_check_compact_time_, NULL);
       if (((double)free_size / total_size) * 100 >= usage) {
-        rocksdb::Status s = db_->Compact(blackwidow::kAll);
+        rocksdb::Status s = db_->Compact(monica::kAll);
         if (s.ok()) {
           LOG(INFO) << "[Interval]schedule compactRange, freesize: " << free_size/1048576 << "MB, disksize: " << total_size/1048576 << "MB";
         } else {
@@ -1298,7 +1298,7 @@ void PikaServer::AutoCompactRange() {
 
     if (!have_scheduled_crontask_ && in_window) {
       if (((double)free_size / total_size) * 100 >= usage) {
-        rocksdb::Status s = db_->Compact(blackwidow::kAll);
+        rocksdb::Status s = db_->Compact(monica::kAll);
         if (s.ok()) {
           LOG(INFO) << "[Cron]schedule compactRange, freesize: " << free_size/1048576 << "MB, disksize: " << total_size/1048576 << "MB";
         } else {
@@ -1424,12 +1424,12 @@ bool PikaServer::FlushAll() {
   dbpath.append("/deleting");
   slash::RenameFile(g_pika_conf->db_path(), dbpath.c_str());
 
-  //Create blackwidow handle
-  blackwidow::BlackwidowOptions bw_option;
+  //Create monica handle
+  monica::MonicaOptions bw_option;
   RocksdbOptionInit(&bw_option);
 
   LOG(INFO) << "Prepare open new db...";
-  db_ = std::shared_ptr<blackwidow::BlackWidow>(new blackwidow::BlackWidow());
+  db_ = std::shared_ptr<monica::Monica>(new monica::Monica());
   rocksdb::Status s = db_->Open(bw_option, g_pika_conf->db_path());
   assert(db_);
   assert(s.ok());
@@ -1463,11 +1463,11 @@ bool PikaServer::FlushDb(const std::string& db_name) {
   std::string del_dbpath = dbpath + db_name + "_deleting";
   slash::RenameFile(sub_dbpath, del_dbpath);
 
-  blackwidow::BlackwidowOptions bw_option;
+  monica::MonicaOptions bw_option;
   RocksdbOptionInit(&bw_option);
 
   LOG(INFO) << "Prepare open new " + db_name + " db...";
-  db_ = std::shared_ptr<blackwidow::BlackWidow>(new blackwidow::BlackWidow());
+  db_ = std::shared_ptr<monica::Monica>(new monica::Monica());
   rocksdb::Status s = db_->Open(bw_option, g_pika_conf->db_path());
   assert(db_);
   assert(s.ok());
@@ -1632,7 +1632,7 @@ void PikaServer::SlowlogPushEntry(const PikaCmdArgsType& argv, int32_t time, int
 }
 
 void PikaServer::RunKeyScan() {
-  std::vector<blackwidow::KeyInfo> new_key_infos;
+  std::vector<monica::KeyInfo> new_key_infos;
 
   rocksdb::Status s = db_->GetKeyNum(&new_key_infos);
 

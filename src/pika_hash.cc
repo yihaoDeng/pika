@@ -88,7 +88,7 @@ void HGetallCmd::DoInitial(const PikaCmdArgsType &argv, const CmdInfo* const ptr
 }
 
 void HGetallCmd::Do() {
-  std::vector<blackwidow::FieldValue> fvs;
+  std::vector<monica::FieldValue> fvs;
   rocksdb::Status s = g_pika_server->db()->HGetall(key_, &fvs);
   if (s.ok() || s.IsNotFound()) {
     res_.AppendArrayLen(fvs.size() * 2);
@@ -239,7 +239,7 @@ void HMgetCmd::DoInitial(const PikaCmdArgsType &argv, const CmdInfo* const ptr_i
 }
 
 void HMgetCmd::Do() {
-  std::vector<blackwidow::ValueStatus> vss;
+  std::vector<monica::ValueStatus> vss;
   rocksdb::Status s = g_pika_server->db()->HMGet(key_, fields_, &vss);
   if (s.ok() || s.IsNotFound()) {
     res_.AppendArrayLen(vss.size());
@@ -394,7 +394,7 @@ void HScanCmd::DoInitial(const PikaCmdArgsType &argv, const CmdInfo* const ptr_i
 
 void HScanCmd::Do() {
   int64_t next_cursor = 0;
-  std::vector<blackwidow::FieldValue> field_values;
+  std::vector<monica::FieldValue> field_values;
   rocksdb::Status s = g_pika_server->db()->HScan(key_, cursor_, pattern_, count_, &field_values, &next_cursor);
 
   if (s.ok() || s.IsNotFound()) {
@@ -454,7 +454,7 @@ void HScanxCmd::DoInitial(const PikaCmdArgsType &argv, const CmdInfo* const ptr_
 
 void HScanxCmd::Do() {
   std::string next_field;
-  std::vector<blackwidow::FieldValue> field_values;
+  std::vector<monica::FieldValue> field_values;
   rocksdb::Status s = g_pika_server->db()->HScanx(key_, start_field_, pattern_, count_, &field_values, &next_field);
 
   if (s.ok() || s.IsNotFound()) {
@@ -509,7 +509,7 @@ void PKHScanRangeCmd::DoInitial(const PikaCmdArgsType &argv, const CmdInfo* cons
 
 void PKHScanRangeCmd::Do() {
   std::string next_field;
-  std::vector<blackwidow::FieldValue> field_values;
+  std::vector<monica::FieldValue> field_values;
   rocksdb::Status s = g_pika_server->db()->PKHScanRange(key_, field_start_, field_end_,
           pattern_, limit_, &field_values, &next_field);
 
@@ -564,7 +564,7 @@ void PKHRScanRangeCmd::DoInitial(const PikaCmdArgsType &argv, const CmdInfo* con
 
 void PKHRScanRangeCmd::Do() {
   std::string next_field;
-  std::vector<blackwidow::FieldValue> field_values;
+  std::vector<monica::FieldValue> field_values;
   rocksdb::Status s = g_pika_server->db()->PKHRScanRange(key_, field_start_, field_end_,
           pattern_, limit_, &field_values, &next_field);
 

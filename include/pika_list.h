@@ -6,7 +6,7 @@
 #ifndef PIKA_LIST_H_
 #define PIKA_LIST_H_
 #include "include/pika_command.h"
-#include "blackwidow/blackwidow.h"
+#include "monica/monica.h"
 
 
 /*
@@ -27,11 +27,11 @@ class LIndexCmd : public Cmd {
 
 class LInsertCmd : public Cmd {
   public:
-    LInsertCmd() : dir_(blackwidow::After) {};
+    LInsertCmd() : dir_(monica::After) {};
     virtual void Do();
   private:
     std::string key_;
-    blackwidow::BeforeOrAfter dir_;
+    monica::BeforeOrAfter dir_;
     std::string pivot_;
     std::string value_;
     virtual void DoInitial(const PikaCmdArgsType &argvs, const CmdInfo* const ptr_info);

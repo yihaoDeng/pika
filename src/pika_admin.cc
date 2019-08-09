@@ -288,17 +288,17 @@ void CompactCmd::DoInitial(const PikaCmdArgsType &argv, const CmdInfo* const ptr
 void CompactCmd::Do() {
   rocksdb::Status s;
   if (struct_type_.empty()) {
-    s = g_pika_server->db()->Compact(blackwidow::kAll);
+    s = g_pika_server->db()->Compact(monica::kAll);
   } else if (!strcasecmp(struct_type_.data(), "string")) {
-    s = g_pika_server->db()->Compact(blackwidow::kStrings);
+    s = g_pika_server->db()->Compact(monica::kStrings);
   } else if (!strcasecmp(struct_type_.data(), "hash")) {
-    s = g_pika_server->db()->Compact(blackwidow::kHashes);
+    s = g_pika_server->db()->Compact(monica::kHashes);
   } else if (!strcasecmp(struct_type_.data(), "set")) {
-    s = g_pika_server->db()->Compact(blackwidow::kSets);
+    s = g_pika_server->db()->Compact(monica::kSets);
   } else if (!strcasecmp(struct_type_.data(), "zset")) {
-    s = g_pika_server->db()->Compact(blackwidow::kZSets);
+    s = g_pika_server->db()->Compact(monica::kZSets);
   } else if (!strcasecmp(struct_type_.data(), "list")) {
-    s = g_pika_server->db()->Compact(blackwidow::kLists);
+    s = g_pika_server->db()->Compact(monica::kLists);
   } else {
     res_.SetRes(CmdRes::kInvalidDbType);
     return;
@@ -811,7 +811,7 @@ void InfoCmd::InfoKeyspace(std::string &info) {
 
   PikaServer::KeyScanInfo key_scan_info = g_pika_server->key_scan_info();
   int32_t duration = key_scan_info.duration;
-  std::vector<blackwidow::KeyInfo>& key_infos = key_scan_info.key_infos;
+  std::vector<monica::KeyInfo>& key_infos = key_scan_info.key_infos;
   if (key_infos.size() != 5) {
     info.append("info keyspace error\r\n");
     return;
@@ -866,8 +866,8 @@ void InfoCmd::InfoData(std::string &info) {
 
   // rocksdb related memory usage
   uint64_t memtable_usage = 0, table_reader_usage = 0;
-  g_pika_server->db()->GetUsage(blackwidow::USAGE_TYPE_ROCKSDB_MEMTABLE, &memtable_usage);
-  g_pika_server->db()->GetUsage(blackwidow::USAGE_TYPE_ROCKSDB_TABLE_READER, &table_reader_usage);
+  g_pika_server->db()->GetUsage(monica::USAGE_TYPE_ROCKSDB_MEMTABLE, &memtable_usage);
+  g_pika_server->db()->GetUsage(monica::USAGE_TYPE_ROCKSDB_TABLE_READER, &table_reader_usage);
 
   tmp_stream << "used_memory:" << (memtable_usage + table_reader_usage) << "\r\n";
   tmp_stream << "used_memory_human:" << ((memtable_usage + table_reader_usage) >> 20) << "M\r\n";
@@ -1538,8 +1538,11 @@ void ConfigCmd::ConfigSet(std::string& ret) {
 }
 
 void ConfigCmd::ConfigRewrite(std::string &ret) {
-  g_pika_conf->ConfigRewrite();
-  ret = "+OK\r\n";
+  if (!g_pika_conf->ConfigRewrite()) {
+    ret = "-Rewrite config file failed, please check file/dir permission firstly\r\n";   
+  } else {
+    ret = "+OK\r\n";
+  }
 }
 
 void ConfigCmd::ConfigResetstat(std::string &ret) {
@@ -1568,7 +1571,7 @@ void DbsizeCmd::DoInitial(const PikaCmdArgsType &argv, const CmdInfo* const ptr_
 
 void DbsizeCmd::Do() {
   PikaServer::KeyScanInfo key_scan_info = g_pika_server->key_scan_info();
-  std::vector<blackwidow::KeyInfo>& key_infos = key_scan_info.key_infos;
+  std::vector<monica::KeyInfo>& key_infos = key_scan_info.key_infos;
   if (key_infos.size() != 5) {
     res_.SetRes(CmdRes::kErrOther, "keyspace error");
     return;
@@ -1684,18 +1687,18 @@ void ScandbCmd::DoInitial(const PikaCmdArgsType &argv, const CmdInfo* const ptr_
     return;
   }
   if (argv.size() == 1) {
-    type_ = blackwidow::kAll;
+    type_ = monica::kAll;
   } else {
     if (!strcasecmp(argv[1].data(),"string")) {
-      type_ = blackwidow::kStrings;
+      type_ = monica::kStrings;
     } else if (!strcasecmp(argv[1].data(), "hash")) {
-      type_ = blackwidow::kHashes;
+      type_ = monica::kHashes;
     } else if (!strcasecmp(argv[1].data(), "set")) {
-      type_ = blackwidow::kSets;
+      type_ = monica::kSets;
     } else if (!strcasecmp(argv[1].data(), "zset")) {
-      type_ = blackwidow::kZSets;
+      type_ = monica::kZSets;
     } else if (!strcasecmp(argv[1].data(), "list")) {
-      type_ = blackwidow::kLists;
+      type_ = monica::kLists;
     } else {
       res_.SetRes(CmdRes::kInvalidDbType);
     }

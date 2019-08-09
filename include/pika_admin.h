@@ -11,7 +11,7 @@
 #include <sys/resource.h>
 #include <iomanip>
 
-#include "blackwidow/blackwidow.h"
+#include "monica/monica.h"
 #include "slash/include/slash_string.h"
 
 #include "include/pika_command.h"
@@ -289,14 +289,14 @@ class EchoCmd : public Cmd {
 
 class ScandbCmd : public Cmd {
  public:
-  ScandbCmd() : type_(blackwidow::kAll) {}
+  ScandbCmd() : type_(monica::kAll) {}
   virtual void Do();
 
  private:
-  blackwidow::DataType type_;
+  monica::DataType type_;
   virtual void DoInitial(const PikaCmdArgsType &argv, const CmdInfo* const ptr_info);
   virtual void Clear() {
-    type_ = blackwidow::kAll;
+    type_ = monica::kAll;
   }
 };
 

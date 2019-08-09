@@ -6,7 +6,7 @@
 #ifndef PIKA_BIT_H_
 #define PIKA_BIT_H_
 #include "include/pika_command.h"
-#include "blackwidow/blackwidow.h"
+#include "monica/monica.h"
 
 
 /*
@@ -91,11 +91,11 @@ public:
 private:
   std::string dest_key_;
   std::vector<std::string> src_keys_;
-  blackwidow::BitOpType op_;
+  monica::BitOpType op_;
   virtual void Clear() {
     dest_key_ = "";
     src_keys_.clear();
-    op_ = blackwidow::kBitOpDefault;
+    op_ = monica::kBitOpDefault;
   }
 
   virtual void DoInitial(const PikaCmdArgsType &argvs, const CmdInfo* const ptr_info);

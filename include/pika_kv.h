@@ -6,7 +6,7 @@
 #ifndef PIKA_KV_H_
 #define PIKA_KV_H_
 #include "include/pika_command.h"
-#include "blackwidow/blackwidow.h"
+#include "monica/monica.h"
 
 
 /*
@@ -255,7 +255,7 @@ class MsetCmd : public Cmd {
   MsetCmd() {}
   virtual void Do();
  private:
-  std::vector<blackwidow::KeyValue> kvs_;
+  std::vector<monica::KeyValue> kvs_;
   virtual void DoInitial(const PikaCmdArgsType &argv, const CmdInfo* const ptr_info);
 };
 
@@ -264,7 +264,7 @@ class MsetnxCmd : public Cmd {
   MsetnxCmd() {}
   virtual void Do();
  private:
-  std::vector<blackwidow::KeyValue> kvs_;
+  std::vector<monica::KeyValue> kvs_;
   int32_t success_;
   virtual void DoInitial(const PikaCmdArgsType &argv, const CmdInfo* const ptr_info);
 };
@@ -430,7 +430,7 @@ public:
   ScanxCmd() : pattern_("*"), count_(10) {}
   virtual void Do();
 private:
-  blackwidow::DataType type_;
+  monica::DataType type_;
   std::string start_key_;
   std::string pattern_;
   int64_t count_;
@@ -460,7 +460,7 @@ public:
   PKScanRangeCmd() : pattern_("*"), limit_(10), string_with_value(false) {}
   virtual void Do();
 private:
-  blackwidow::DataType type_;
+  monica::DataType type_;
   std::string key_start_;
   std::string key_end_;
   std::string pattern_;
@@ -479,7 +479,7 @@ public:
   PKRScanRangeCmd() : pattern_("*"), limit_(10), string_with_value(false) {}
   virtual void Do();
 private:
-  blackwidow::DataType type_;
+  monica::DataType type_;
   std::string key_start_;
   std::string key_end_;
   std::string pattern_;

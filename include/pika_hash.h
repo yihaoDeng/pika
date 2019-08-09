@@ -6,7 +6,7 @@
 #ifndef PIKA_HASH_H_
 #define PIKA_HASH_H_
 #include "include/pika_command.h"
-#include "blackwidow/blackwidow.h"
+#include "monica/monica.h"
 
 
 /*
@@ -112,7 +112,7 @@ public:
   virtual void Do();
 private:
   std::string key_;
-  std::vector<blackwidow::FieldValue> fvs_;
+  std::vector<monica::FieldValue> fvs_;
   virtual void DoInitial(const PikaCmdArgsType &argvs, const CmdInfo* const ptr_info);
 };
 

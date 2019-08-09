@@ -45,7 +45,7 @@ void GeoAddCmd::DoInitial(const PikaCmdArgsType &argv, const CmdInfo* const ptr_
 }
 
 void GeoAddCmd::Do() {
-  std::vector<blackwidow::ScoreMember> score_members;
+  std::vector<monica::ScoreMember> score_members;
   for (const auto& geo_point : pos_) {
     // Convert coordinates to geohash
     GeoHashBits hash;
@@ -297,7 +297,7 @@ static void GetAllNeighbors(std::string & key, GeoRange & range, CmdRes & res) {
     if(last_processed && neighbors[i].bits == neighbors[last_processed].bits && neighbors[i].step == neighbors[last_processed].step) {
 	continue;
     }
-    std::vector<blackwidow::ScoreMember> score_members;
+    std::vector<monica::ScoreMember> score_members;
     s = g_pika_server->db()->ZRangebyscore(key, (double)min, (double)max, true, true, &score_members);
     if (!s.ok() && !s.IsNotFound()) {
       res.SetRes(CmdRes::kErrOther, s.ToString());
@@ -334,7 +334,7 @@ static void GetAllNeighbors(std::string & key, GeoRange & range, CmdRes & res) {
   
   if (range.store || range.storedist) {
     // Target key, create a sorted set with the results.
-    std::vector<blackwidow::ScoreMember> score_members;
+    std::vector<monica::ScoreMember> score_members;
     for (int i = 0; i < count_limit; ++i) {
       double distance = length_converter(result[i].distance, range.unit);
       double score = range.store ? result[i].score : distance;

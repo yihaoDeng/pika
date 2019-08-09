@@ -173,7 +173,7 @@ void DelCmd::DoInitial(const PikaCmdArgsType &argv, const CmdInfo* const ptr_inf
 }
 
 void DelCmd::Do() {
-  std::map<blackwidow::DataType, blackwidow::Status> type_status;
+  std::map<monica::DataType, monica::Status> type_status;
   int64_t count = g_pika_server->db()->Del(keys_, &type_status);
   if (count >= 0) {
     res_.AppendInteger(count);
@@ -534,7 +534,7 @@ void MgetCmd::DoInitial(const PikaCmdArgsType &argv, const CmdInfo* const ptr_in
 }
 
 void MgetCmd::Do() {
-  std::vector<blackwidow::ValueStatus> vss;
+  std::vector<monica::ValueStatus> vss;
   rocksdb::Status s = g_pika_server->db()->MGet(keys_, &vss);
   if (s.ok()) {
     res_.AppendArrayLen(vss.size());
@@ -802,7 +802,7 @@ void MsetCmd::DoInitial(const PikaCmdArgsType &argv, const CmdInfo* const ptr_in
 }
 
 void MsetCmd::Do() {
-  blackwidow::Status s = g_pika_server->db()->MSet(kvs_);
+  monica::Status s = g_pika_server->db()->MSet(kvs_);
   if (s.ok()) {
     res_.SetRes(CmdRes::kOk);
   } else {
@@ -921,7 +921,7 @@ void ExistsCmd::DoInitial(const PikaCmdArgsType &argv, const CmdInfo* const ptr_
 }
 
 void ExistsCmd::Do() {
-  std::map<blackwidow::DataType, rocksdb::Status> type_status;
+  std::map<monica::DataType, rocksdb::Status> type_status;
   int64_t res = g_pika_server->db()->Exists(keys_, &type_status);
   if (res != -1) {
     res_.AppendInteger(res);
@@ -945,7 +945,7 @@ void ExpireCmd::DoInitial(const PikaCmdArgsType &argv, const CmdInfo* const ptr_
 }
 
 void ExpireCmd::Do() {
-  std::map<blackwidow::DataType, rocksdb::Status> type_status;
+  std::map<monica::DataType, rocksdb::Status> type_status;
   int64_t res = g_pika_server->db()->Expire(key_, sec_, &type_status);
   if (res != -1) {
     res_.AppendInteger(res);
@@ -1005,7 +1005,7 @@ void PexpireCmd::DoInitial(const PikaCmdArgsType &argv, const CmdInfo* const ptr
 }
 
 void PexpireCmd::Do() {
-  std::map<blackwidow::DataType, rocksdb::Status> type_status;
+  std::map<monica::DataType, rocksdb::Status> type_status;
   int64_t res = g_pika_server->db()->Expire(key_, msec_/1000, &type_status);
   if (res != -1) {
     res_.AppendInteger(res);
@@ -1065,7 +1065,7 @@ void ExpireatCmd::DoInitial(const PikaCmdArgsType &argv, const CmdInfo* const pt
 }
 
 void ExpireatCmd::Do() {
-  std::map<blackwidow::DataType, rocksdb::Status> type_status;
+  std::map<monica::DataType, rocksdb::Status> type_status;
   int32_t res = g_pika_server->db()->Expireat(key_, time_stamp_, &type_status);
   if (res != -1) {
     res_.AppendInteger(res);
@@ -1124,7 +1124,7 @@ std::string PexpireatCmd::ToBinlog(
 }
 
 void PexpireatCmd::Do() {
-  std::map<blackwidow::DataType, rocksdb::Status> type_status;
+  std::map<monica::DataType, rocksdb::Status> type_status;
   int32_t res = g_pika_server->db()->Expireat(key_, time_stamp_ms_/1000, &type_status);
   if (res != -1) {
     res_.AppendInteger(res);
@@ -1144,8 +1144,8 @@ void TtlCmd::DoInitial(const PikaCmdArgsType &argv, const CmdInfo* const ptr_inf
 }
 
 void TtlCmd::Do() {
-  std::map<blackwidow::DataType, int64_t> type_timestamp;
-  std::map<blackwidow::DataType, rocksdb::Status> type_status;
+  std::map<monica::DataType, int64_t> type_timestamp;
+  std::map<monica::DataType, rocksdb::Status> type_status;
   type_timestamp = g_pika_server->db()->TTL(key_, &type_status);
   for (const auto& item : type_timestamp) {
      // mean operation exception errors happen in database
@@ -1154,16 +1154,16 @@ void TtlCmd::Do() {
        return;
      }
   }
-  if (type_timestamp[blackwidow::kStrings] != -2) {
-    res_.AppendInteger(type_timestamp[blackwidow::kStrings]);
-  } else if (type_timestamp[blackwidow::kHashes] != -2) {
-    res_.AppendInteger(type_timestamp[blackwidow::kHashes]);
-  } else if (type_timestamp[blackwidow::kLists] != -2) {
-    res_.AppendInteger(type_timestamp[blackwidow::kLists]);
-  } else if (type_timestamp[blackwidow::kZSets] != -2) {
-    res_.AppendInteger(type_timestamp[blackwidow::kZSets]);
-  } else if (type_timestamp[blackwidow::kSets] != -2) {
-    res_.AppendInteger(type_timestamp[blackwidow::kSets]);
+  if (type_timestamp[monica::kStrings] != -2) {
+    res_.AppendInteger(type_timestamp[monica::kStrings]);
+  } else if (type_timestamp[monica::kHashes] != -2) {
+    res_.AppendInteger(type_timestamp[monica::kHashes]);
+  } else if (type_timestamp[monica::kLists] != -2) {
+    res_.AppendInteger(type_timestamp[monica::kLists]);
+  } else if (type_timestamp[monica::kZSets] != -2) {
+    res_.AppendInteger(type_timestamp[monica::kZSets]);
+  } else if (type_timestamp[monica::kSets] != -2) {
+    res_.AppendInteger(type_timestamp[monica::kSets]);
   } else {
     // mean this key not exist
     res_.AppendInteger(-2);
@@ -1181,8 +1181,8 @@ void PttlCmd::DoInitial(const PikaCmdArgsType &argv, const CmdInfo* const ptr_in
 }
 
 void PttlCmd::Do() {
-  std::map<blackwidow::DataType, int64_t> type_timestamp;
-  std::map<blackwidow::DataType, rocksdb::Status> type_status;
+  std::map<monica::DataType, int64_t> type_timestamp;
+  std::map<monica::DataType, rocksdb::Status> type_status;
   type_timestamp = g_pika_server->db()->TTL(key_, &type_status);
   for (const auto& item : type_timestamp) {
      // mean operation exception errors happen in database
@@ -1191,35 +1191,35 @@ void PttlCmd::Do() {
        return;
      }
   }
-  if (type_timestamp[blackwidow::kStrings] != -2) {
-    if (type_timestamp[blackwidow::kStrings] == -1) {
+  if (type_timestamp[monica::kStrings] != -2) {
+    if (type_timestamp[monica::kStrings] == -1) {
       res_.AppendInteger(-1);
     } else {
-      res_.AppendInteger(type_timestamp[blackwidow::kStrings] * 1000);
+      res_.AppendInteger(type_timestamp[monica::kStrings] * 1000);
     }
-  } else if (type_timestamp[blackwidow::kHashes] != -2) {
-    if (type_timestamp[blackwidow::kHashes] == -1) {
+  } else if (type_timestamp[monica::kHashes] != -2) {
+    if (type_timestamp[monica::kHashes] == -1) {
       res_.AppendInteger(-1);
     } else {
-      res_.AppendInteger(type_timestamp[blackwidow::kHashes] * 1000);
+      res_.AppendInteger(type_timestamp[monica::kHashes] * 1000);
     }
-  } else if (type_timestamp[blackwidow::kLists] != -2) {
-    if (type_timestamp[blackwidow::kLists] == -1) {
+  } else if (type_timestamp[monica::kLists] != -2) {
+    if (type_timestamp[monica::kLists] == -1) {
       res_.AppendInteger(-1);
     } else {
-      res_.AppendInteger(type_timestamp[blackwidow::kLists] * 1000);
+      res_.AppendInteger(type_timestamp[monica::kLists] * 1000);
     }
-  } else if (type_timestamp[blackwidow::kSets] != -2) {
-    if (type_timestamp[blackwidow::kSets] == -1) {
+  } else if (type_timestamp[monica::kSets] != -2) {
+    if (type_timestamp[monica::kSets] == -1) {
       res_.AppendInteger(-1);
     } else {
-      res_.AppendInteger(type_timestamp[blackwidow::kSets] * 1000);
+      res_.AppendInteger(type_timestamp[monica::kSets] * 1000);
     }
-  } else if (type_timestamp[blackwidow::kZSets] != -2) {
-    if (type_timestamp[blackwidow::kZSets] == -1) {
+  } else if (type_timestamp[monica::kZSets] != -2) {
+    if (type_timestamp[monica::kZSets] == -1) {
       res_.AppendInteger(-1);
     } else {
-      res_.AppendInteger(type_timestamp[blackwidow::kZSets] * 1000);
+      res_.AppendInteger(type_timestamp[monica::kZSets] * 1000);
     }
   } else {
     // mean this key not exist
@@ -1238,7 +1238,7 @@ void PersistCmd::DoInitial(const PikaCmdArgsType &argv, const CmdInfo* const ptr
 }
 
 void PersistCmd::Do() {
-  std::map<blackwidow::DataType, rocksdb::Status> type_status;
+  std::map<monica::DataType, rocksdb::Status> type_status;
   int32_t res = g_pika_server->db()->Persist(key_, &type_status);
   if (res != -1) {
     res_.AppendInteger(res);
@@ -1329,15 +1329,15 @@ void ScanxCmd::DoInitial(const PikaCmdArgsType &argv, const CmdInfo* const ptr_i
     return;
   }
   if (!strcasecmp(argv[1].data(), "string")) {
-    type_ = blackwidow::kStrings;
+    type_ = monica::kStrings;
   } else if (!strcasecmp(argv[1].data(), "hash")) {
-    type_ = blackwidow::kHashes;
+    type_ = monica::kHashes;
   } else if (!strcasecmp(argv[1].data(), "set")) {
-    type_ = blackwidow::kSets;
+    type_ = monica::kSets;
   } else if (!strcasecmp(argv[1].data(), "zset")) {
-    type_ = blackwidow::kZSets;
+    type_ = monica::kZSets;
   } else if (!strcasecmp(argv[1].data(), "list")) {
-    type_ = blackwidow::kLists;
+    type_ = monica::kLists;
   } else {
     res_.SetRes(CmdRes::kInvalidDbType);
     return;
@@ -1421,18 +1421,18 @@ void PKScanRangeCmd::DoInitial(const PikaCmdArgsType &argv, const CmdInfo* const
     return;
   }
   if (!strcasecmp(argv[1].data(), "string_with_value")) {
-    type_ = blackwidow::kStrings;
+    type_ = monica::kStrings;
     string_with_value = true;
   } else if (!strcasecmp(argv[1].data(), "string")) {
-    type_ = blackwidow::kStrings;
+    type_ = monica::kStrings;
   } else if (!strcasecmp(argv[1].data(), "hash")) {
-    type_ = blackwidow::kHashes;
+    type_ = monica::kHashes;
   } else if (!strcasecmp(argv[1].data(), "set")) {
-    type_ = blackwidow::kSets;
+    type_ = monica::kSets;
   } else if (!strcasecmp(argv[1].data(), "zset")) {
-    type_ = blackwidow::kZSets;
+    type_ = monica::kZSets;
   } else if (!strcasecmp(argv[1].data(), "list")) {
-    type_ = blackwidow::kLists;
+    type_ = monica::kLists;
   } else {
     res_.SetRes(CmdRes::kInvalidDbType);
     return;
@@ -1468,7 +1468,7 @@ void PKScanRangeCmd::DoInitial(const PikaCmdArgsType &argv, const CmdInfo* const
 void PKScanRangeCmd::Do() {
   std::string next_key;
   std::vector<std::string> keys;
-  std::vector<blackwidow::KeyValue> kvs;
+  std::vector<monica::KeyValue> kvs;
   rocksdb::Status s = g_pika_server->db()->PKScanRange(type_, key_start_, key_end_, pattern_, limit_, &keys, &kvs, &next_key);
 
   if (s.ok()) {
@@ -1476,7 +1476,7 @@ void PKScanRangeCmd::Do() {
     res_.AppendStringLen(next_key.size());
     res_.AppendContent(next_key);
 
-    if (type_ == blackwidow::kStrings) {
+    if (type_ == monica::kStrings) {
       res_.AppendArrayLen(string_with_value ? 2 * kvs.size() : kvs.size());
       for (const auto& kv : kvs) {
         res_.AppendString(kv.key);
@@ -1502,18 +1502,18 @@ void PKRScanRangeCmd::DoInitial(const PikaCmdArgsType &argv, const CmdInfo* cons
     return;
   }
   if (!strcasecmp(argv[1].data(), "string_with_value")) {
-    type_ = blackwidow::kStrings;
+    type_ = monica::kStrings;
     string_with_value = true;
   } else if (!strcasecmp(argv[1].data(), "string")) {
-    type_ = blackwidow::kStrings;
+    type_ = monica::kStrings;
   } else if (!strcasecmp(argv[1].data(), "hash")) {
-    type_ = blackwidow::kHashes;
+    type_ = monica::kHashes;
   } else if (!strcasecmp(argv[1].data(), "set")) {
-    type_ = blackwidow::kSets;
+    type_ = monica::kSets;
   } else if (!strcasecmp(argv[1].data(), "zset")) {
-    type_ = blackwidow::kZSets;
+    type_ = monica::kZSets;
   } else if (!strcasecmp(argv[1].data(), "list")) {
-    type_ = blackwidow::kLists;
+    type_ = monica::kLists;
   } else {
     res_.SetRes(CmdRes::kInvalidDbType);
     return;
@@ -1549,7 +1549,7 @@ void PKRScanRangeCmd::DoInitial(const PikaCmdArgsType &argv, const CmdInfo* cons
 void PKRScanRangeCmd::Do() {
   std::string next_key;
   std::vector<std::string> keys;
-  std::vector<blackwidow::KeyValue> kvs;
+  std::vector<monica::KeyValue> kvs;
   rocksdb::Status s = g_pika_server->db()->PKRScanRange(type_, key_start_, key_end_, pattern_, limit_, &keys, &kvs, &next_key);
 
   if (s.ok()) {
@@ -1557,7 +1557,7 @@ void PKRScanRangeCmd::Do() {
     res_.AppendStringLen(next_key.size());
     res_.AppendContent(next_key);
 
-    if (type_ == blackwidow::kStrings) {
+    if (type_ == monica::kStrings) {
       res_.AppendArrayLen(string_with_value ? 2 * kvs.size() : kvs.size());
       for (const auto& kv : kvs) {
         res_.AppendString(kv.key);

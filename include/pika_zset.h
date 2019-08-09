@@ -6,7 +6,7 @@
 #ifndef PIKA_ZSET_H_
 #define PIKA_ZSET_H_
 #include "include/pika_command.h"
-#include "blackwidow/blackwidow.h"
+#include "monica/monica.h"
 
 
 /*
@@ -18,7 +18,7 @@ public:
   virtual void Do();
 private:
   std::string key_;
-  std::vector<blackwidow::ScoreMember> score_members;
+  std::vector<monica::ScoreMember> score_members;
   virtual void DoInitial(const PikaCmdArgsType &argvs, const CmdInfo* const ptr_info);
 };
 
@@ -140,16 +140,16 @@ private:
 
 class ZsetUIstoreParentCmd : public Cmd {
 public:
-  ZsetUIstoreParentCmd() : aggregate_(blackwidow::SUM) {}
+  ZsetUIstoreParentCmd() : aggregate_(monica::SUM) {}
 protected:
   std::string dest_key_;
   int64_t num_keys_;
-  blackwidow::AGGREGATE aggregate_;
+  monica::AGGREGATE aggregate_;
   std::vector<std::string> keys_;
   std::vector<double> weights_;
   virtual void DoInitial(const PikaCmdArgsType &argvs, const CmdInfo* const ptr_info);
   virtual void Clear() {
-    aggregate_ = blackwidow::SUM;
+    aggregate_ = monica::SUM;
   }
 };
 

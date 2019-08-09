@@ -76,10 +76,10 @@ ifndef GLOG_PATH
 GLOG_PATH = $(THIRD_PATH)/glog
 endif
 
-ifndef BLACKWIDOW_PATH
-BLACKWIDOW_PATH = $(THIRD_PATH)/blackwidow
+ifndef MONICA_PATH
+MONICA_PATH = $(THIRD_PATH)/monica
 endif
-BLACKWIDOW = $(BLACKWIDOW_PATH)/lib/libblackwidow$(DEBUG_SUFFIX).a
+MONICA = $(MONICA_PATH)/lib/libmonica$(DEBUG_SUFFIX).a
 
 ifndef MOKA_PATH
 MOKA_PATH = $(THIRD_PATH)/moka
@@ -99,8 +99,7 @@ endif
 INCLUDE_PATH = -I. \
 							 -I$(SLASH_PATH) \
 							 -I$(PINK_PATH) \
-							 -I$(BLACKWIDOW_PATH)/include \
-							 -I$(MOKA_PATH)/include \
+							 -I$(MONICA_PATH)/include \
 							 -I$(RDBPARSE_PATH)/include \
 							 -I$(ROCKSDB_PATH) \
 							 -I$(ROCKSDB_PATH)/include
@@ -112,8 +111,7 @@ endif
 LIB_PATH = -L./ \
 					 -L$(SLASH_PATH)/slash/lib \
 					 -L$(PINK_PATH)/pink/lib \
-					 -L$(BLACKWIDOW_PATH)/lib \
-					 -L$(MOKA_PATH)/lib \
+					 -L$(MONICA_PATH)/lib \
 					 -L$(RDBPARSE_PATH)/lib \
 					 -L$(ROCKSDB_PATH)
 
@@ -124,8 +122,7 @@ endif
 LDFLAGS += $(LIB_PATH) \
 			 		 -lpink$(DEBUG_SUFFIX) \
 			 		 -lslash$(DEBUG_SUFFIX) \
-					 -lblackwidow$(DEBUG_SUFFIX) \
-					 -lmoka$(DEBUG_SUFFIX) \
+					 -lmonica$(DEBUG_SUFFIX) \
 					 -lrdbparse$(DEBUG_SUFFIX) \
 					 -lrocksdb$(DEBUG_SUFFIX) \
 					 -lglog
@@ -216,7 +213,7 @@ all: $(BINARY)
 
 dbg: $(BINARY)
 
-$(BINARY): $(SLASH) $(PINK) $(ROCKSDB) $(BLACKWIDOW) $(MOKA) $(RDBPARSE) $(GLOG) $(LIBOBJECTS)
+$(BINARY): $(SLASH) $(PINK) $(ROCKSDB) $(MONICA) $(RDBPARSE) $(GLOG) $(LIBOBJECTS)
 	$(AM_V_at)rm -f $@
 	$(AM_V_at)$(AM_LINK)
 	$(AM_V_at)rm -rf $(OUTPUT)
@@ -234,11 +231,8 @@ $(PINK):
 $(ROCKSDB):
 	$(AM_V_at)make -j $(PROCESSOR_NUMS) -C $(ROCKSDB_PATH)/ static_lib DISABLE_JEMALLOC=1 DEBUG_LEVEL=$(DEBUG_LEVEL)
 
-$(MOKA):
-	$(AM_V_at)make -C $(MOKA_PATH) ROCKSDB_PATH=$(ROCKSDB_PATH) SLASH_PATH=$(SLASH_PATH) DEBUG_LEVEL=$(DEBUG_LEVEL)
-
-$(BLACKWIDOW):
-	$(AM_V_at)make -C $(BLACKWIDOW_PATH) ROCKSDB_PATH=$(ROCKSDB_PATH) SLASH_PATH=$(SLASH_PATH) DEBUG_LEVEL=$(DEBUG_LEVEL)
+$(MONICA):
+	$(AM_V_at)make -C $(MONICA_PATH) ROCKSDB_PATH=$(ROCKSDB_PATH) SLASH_PATH=$(SLASH_PATH) DEBUG_LEVEL=$(DEBUG_LEVEL)
 
 $(RDBPARSE):
 	$(AM_V_at)make -C $(RDBPARSE_PATH) SLASH_PATH=$(SLASH_PATH) DEBUG_LEVEL=$(DEBUG_LEVEL)

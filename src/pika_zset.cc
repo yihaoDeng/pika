@@ -105,7 +105,7 @@ void ZScanCmd::DoInitial(const PikaCmdArgsType &argv, const CmdInfo* const ptr_i
 
 void ZScanCmd::Do() {
   int64_t next_cursor = 0;
-  std::vector<blackwidow::ScoreMember> score_members;
+  std::vector<monica::ScoreMember> score_members;
   rocksdb::Status s = g_pika_server->db()->ZScan(key_, cursor_, pattern_, count_, &score_members, &next_cursor);
   if (s.ok() || s.IsNotFound()) {
     res_.AppendContent("*2");
@@ -185,7 +185,7 @@ void ZRangeCmd::DoInitial(const PikaCmdArgsType &argv, const CmdInfo* const ptr_
 }
 
 void ZRangeCmd::Do() {
-  std::vector<blackwidow::ScoreMember> score_members;
+  std::vector<monica::ScoreMember> score_members;
   rocksdb::Status s = g_pika_server->db()->ZRange(key_, start_, stop_, &score_members);
   if (s.ok() || s.IsNotFound()) {
     if (is_ws_) {
@@ -221,7 +221,7 @@ void ZRevrangeCmd::DoInitial(const PikaCmdArgsType &argv, const CmdInfo* const p
 }
 
 void ZRevrangeCmd::Do() {
-  std::vector<blackwidow::ScoreMember> score_members;
+  std::vector<monica::ScoreMember> score_members;
   rocksdb::Status s = g_pika_server->db()->ZRevrange(key_, start_, stop_, &score_members);
   if (s.ok() || s.IsNotFound()) {
     if (is_ws_) {
@@ -254,9 +254,9 @@ int32_t DoScoreStrRange(std::string begin_score, std::string end_score, bool *le
     begin_score.erase(begin_score.begin());
   }
   if (begin_score == "-inf") {
-    *min_score = blackwidow::ZSET_SCORE_MIN;
+    *min_score = monica::ZSET_SCORE_MIN;
   } else if (begin_score == "inf" || begin_score == "+inf") {
-    *min_score = blackwidow::ZSET_SCORE_MAX;
+    *min_score = monica::ZSET_SCORE_MAX;
   } else if (!slash::string2d(begin_score.data(), begin_score.size(), min_score)) {
     return -1;
   } 
@@ -266,9 +266,9 @@ int32_t DoScoreStrRange(std::string begin_score, std::string end_score, bool *le
     end_score.erase(end_score.begin());
   }
   if (end_score == "+inf" || end_score == "inf") {
-    *max_score = blackwidow::ZSET_SCORE_MAX;
+    *max_score = monica::ZSET_SCORE_MAX;
   } else if (end_score == "-inf") {
-    *max_score = blackwidow::ZSET_SCORE_MIN;
+    *max_score = monica::ZSET_SCORE_MIN;
   } else if (!slash::string2d(end_score.data(), end_score.size(), max_score)) {
     return -1;
   }
@@ -329,11 +329,11 @@ void ZRangebyscoreCmd::DoInitial(const PikaCmdArgsType &argv, const CmdInfo* con
 }
 
 void ZRangebyscoreCmd::Do() {
-  if (min_score_ == blackwidow::ZSET_SCORE_MAX || max_score_ == blackwidow::ZSET_SCORE_MIN) {
+  if (min_score_ == monica::ZSET_SCORE_MAX || max_score_ == monica::ZSET_SCORE_MIN) {
     res_.AppendContent("*0");
     return;
   }
-  std::vector<blackwidow::ScoreMember> score_members;
+  std::vector<monica::ScoreMember> score_members;
   rocksdb::Status s = g_pika_server->db()->ZRangebyscore(key_, min_score_, max_score_, left_close_, right_close_, &score_members);
   if (!s.ok() && !s.IsNotFound()) {
     res_.SetRes(CmdRes::kErrOther, s.ToString());
@@ -380,11 +380,11 @@ void ZRevrangebyscoreCmd::DoInitial(const PikaCmdArgsType &argv, const CmdInfo* 
 }
 
 void ZRevrangebyscoreCmd::Do() {
-  if (min_score_ == blackwidow::ZSET_SCORE_MAX || max_score_ == blackwidow::ZSET_SCORE_MIN) {
+  if (min_score_ == monica::ZSET_SCORE_MAX || max_score_ == monica::ZSET_SCORE_MIN) {
     res_.AppendContent("*0");
     return;
   }
-  std::vector<blackwidow::ScoreMember> score_members;
+  std::vector<monica::ScoreMember> score_members;
   rocksdb::Status s = g_pika_server->db()->ZRevrangebyscore(key_, min_score_, max_score_, left_close_, right_close_, &score_members);
   if (!s.ok() && !s.IsNotFound()) {
     res_.SetRes(CmdRes::kErrOther, s.ToString());
@@ -428,7 +428,7 @@ void ZCountCmd::DoInitial(const PikaCmdArgsType &argv, const CmdInfo* const ptr_
 }
 
 void ZCountCmd::Do() {
-  if (min_score_ == blackwidow::ZSET_SCORE_MAX || max_score_ == blackwidow::ZSET_SCORE_MIN) {
+  if (min_score_ == monica::ZSET_SCORE_MAX || max_score_ == monica::ZSET_SCORE_MIN) {
     res_.AppendContent("*0");
     return;
   }
@@ -507,11 +507,11 @@ void ZsetUIstoreParentCmd::DoInitial(const PikaCmdArgsType &argv, const CmdInfo*
         return;
       }
       if (!strcasecmp(argv[index].data(), "sum")) {
-        aggregate_ = blackwidow::SUM;
+        aggregate_ = monica::SUM;
       } else if (!strcasecmp(argv[index].data(), "min")) {
-        aggregate_ = blackwidow::MIN;
+        aggregate_ = monica::MIN;
       } else if (!strcasecmp(argv[index].data(), "max")) {
-        aggregate_ = blackwidow::MAX;
+        aggregate_ = monica::MAX;
       } else {
         res_.SetRes(CmdRes::kSyntaxErr);
         return;
@@ -839,7 +839,7 @@ void ZRemrangebyscoreCmd::DoInitial(const PikaCmdArgsType &argv, const CmdInfo* 
 }
 
 void ZRemrangebyscoreCmd::Do() {
-  if (min_score_ == blackwidow::ZSET_SCORE_MAX || max_score_ == blackwidow::ZSET_SCORE_MIN) {
+  if (min_score_ == monica::ZSET_SCORE_MAX || max_score_ == monica::ZSET_SCORE_MIN) {
     res_.AppendContent(":0");
     return;
   }

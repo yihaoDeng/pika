@@ -28,8 +28,8 @@
 #include "pink/include/bg_thread.h"
 #include "pink/include/pink_pubsub.h"
 #include "pink/include/thread_pool.h"
-#include "blackwidow/blackwidow.h"
-#include "blackwidow/backupable.h"
+#include "monica/monica.h"
+#include "monica/backupable.h"
 
 using slash::Status;
 using slash::Slice;
@@ -78,7 +78,7 @@ class PikaServer {
     sid_ = sid;
   }
 
-  const std::shared_ptr<blackwidow::BlackWidow> db() {
+  const std::shared_ptr<monica::Monica> db() {
     return db_;
   }
 
@@ -207,9 +207,9 @@ class PikaServer {
   bool ServerInit();
 
   /*
-   * Blackwidow options init
+   * monica options init
    */
-  void RocksdbOptionInit(blackwidow::BlackwidowOptions* bw_option);
+  void RocksdbOptionInit(monica::MonicaOptions* bw_option);
 
   /*
    * ThreadPool process task
@@ -305,7 +305,7 @@ class PikaServer {
     time_t start_time;
     std::string s_start_time;
     int32_t duration;
-    std::vector<blackwidow::KeyInfo> key_infos; //the order is strings, hashes, lists, zsets, sets
+    std::vector<monica::KeyInfo> key_infos; //the order is strings, hashes, lists, zsets, sets
     bool key_scaning_;
     KeyScanInfo() :
         start_time(0),
@@ -411,7 +411,7 @@ class PikaServer {
   std::string host_;
   int port_;
   pthread_rwlock_t rwlock_;
-  std::shared_ptr<blackwidow::BlackWidow> db_;
+  std::shared_ptr<monica::Monica> db_;
 
   time_t start_time_s_;
   bool have_scheduled_crontask_;
@@ -451,7 +451,7 @@ class PikaServer {
    */
   slash::Mutex bgsave_protector_;
   pink::BGThread bgsave_thread_;
-  blackwidow::BackupEngine *bgsave_engine_;
+  monica::BackupEngine *bgsave_engine_;
   BGSaveInfo bgsave_info_;
 
   static void DoBgsave(void* arg);

@@ -182,21 +182,21 @@ void BitOpCmd::DoInitial(const PikaCmdArgsType &argv, const CmdInfo* const ptr_i
   }
   std::string op_str = argv[1];
   if (!strcasecmp(op_str.data(), "not")) {
-    op_ = blackwidow::kBitOpNot;
+    op_ = monica::kBitOpNot;
   } else if (!strcasecmp(op_str.data(), "and")) {
-    op_ = blackwidow::kBitOpAnd;
+    op_ = monica::kBitOpAnd;
   } else if (!strcasecmp(op_str.data(), "or")) {
-    op_ = blackwidow::kBitOpOr;
+    op_ = monica::kBitOpOr;
   } else if (!strcasecmp(op_str.data(), "xor")) {
-    op_ = blackwidow::kBitOpXor;
+    op_ = monica::kBitOpXor;
   } else {
     res_.SetRes(CmdRes::kSyntaxErr, kCmdNameBitOp);
     return;
   }
-  if (op_ == blackwidow::kBitOpNot && argv.size() != 4) {
+  if (op_ == monica::kBitOpNot && argv.size() != 4) {
       res_.SetRes(CmdRes::kWrongBitOpNotNum, kCmdNameBitOp);
       return;
-  } else if (op_ != blackwidow::kBitOpNot && argv.size() < 4) {
+  } else if (op_ != monica::kBitOpNot && argv.size() < 4) {
       res_.SetRes(CmdRes::kWrongNum, kCmdNameBitOp);
       return;
   } else if (argv.size() >= kMaxBitOpInputKey) {
