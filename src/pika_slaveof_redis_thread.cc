@@ -9,12 +9,14 @@ using namespace pink;
 using namespace slash;
 
 
-PikaSyncRedisConn::PikaSyncRedisConn(
+PikaSyncRedisConn::PikaSyncRedisConn (
     PinkEpoll* pink_epoll, void *specific_data,
     PikaSlaveofRedisThread *thread)
   : PinkConn(-1, "", NULL, pink_epoll), 
-  redis_cli_(NewRedisCli()), thread_(thread) {
+    redis_cli_(NewRedisCli()), 
+    thread_(thread) {
   }
+
 PikaSyncRedisConn::~PikaSyncRedisConn() {
   thread_->ResetRepl();
   delete redis_cli_; 
@@ -66,7 +68,38 @@ ReadStatus PikaSyncRedisConn::GetRequest() {
       return kReadError; 
     }
     state = kReplSendPsync; 
+  } else if (state == kReplRecvPsync) {
+    s = redis_cli_->Recv(&argv);
+    PsyncState state = TryPartialResync(false);
+    if (state == kPsyncWaitReply || state == kPsyncContinue) {
+      return kReadAll;
+    } else if (state == kPsyncTryLater) {
+      return kReadError;
+    } else if (state == kPsyncNotSupported) {
+      argv.push_back("SYNC");    
+      std::string wbuf;
+      SerializeRedisCommand(argv, &wbuf);
+      s = redis_cli_->Send(&wbuf);  
+      if (!s.ok()) {
+        return kReadError;
+      }
+      s = thread_->CreateRdbFile();
+      if (!s.ok()) {
+        return kReadError;
+      }
+      set_is_reply(false);
+      thread_->set_repl_state(kReplTransfer); 
+      pink_epoll()->PinkAddEvent(redis_cli_->fd(), EPOLLIN);
+      return kReadAll; 
+    } 
+  } else if (state == kReplTransfer) {
+    //TODO
+    set_is_reply(false);
+    return kReadAll; 
+  } else if (state == kReplConnected) {
+    //redis_conn_ = new PikaClientConn(redis_cli_->fd(), NULL)       
   }
+  
   thread_->set_repl_state(state);
   set_is_reply(true);
   return kReadAll;   
@@ -144,42 +177,70 @@ WriteStatus PikaSyncRedisConn::SendReply() {
     thread_->set_repl_state(kReplRecvCapa);
     return kWriteAll;
   } else if (state == kReplSendPsync) {
-    thread_->set_psync_state(TryPartialResync(false));  
-    if (thread_->psync_state() == kPsyncWriteError) {
+    if (TryPartialResync(true) == kPsyncWriteError) {
       return kWriteError;
     }
     thread_->set_repl_state(kReplRecvPsync);
     return kWriteAll;
   }
-
-  if (state != kReplRecvPsync) {
-    return kWriteError;
-  }
-
-  thread_->set_psync_state(TryPartialResync(true));
-  PsyncState psync_state = thread_->psync_state();
-  if (psync_state == kPsyncWaitReply || psync_state == kPsyncContinue) {
-    return kWriteAll;
-  } else if (psync_state == kPsyncTryLater) {
-    return kWriteError;
-  } else if (psync_state == kPsyncNotSupported) {
-    argv.clear();  
-    argv.push_back("SYNC");
-    SerializeRedisCommand(argv, &wbuf_str); 
-    s = redis_cli_->Send(&wbuf_str);
-    if (!s.ok()) {
-      return kWriteError;
-    }
-  }  
-  s = thread_->CreateRdbFile();
-  if (!s.ok()) {
-    return kWriteError;
-  }
-  return kWriteAll;
+  return state != kReplRecvPsync ? kWriteError : kWriteAll;
 }
 
-PsyncState PikaSyncRedisConn::TryPartialResync(bool read_reply) {
-  return kPsyncNotSupported;    
+PsyncState PikaSyncRedisConn::TryPartialResync(bool write_only) {
+  slash::Status s;
+  RedisCmdArgsType argv;
+  std::string wbuf;
+  ReplInfo *cached_master = thread_->cached_master(); 
+  if (write_only) {
+    //ReplInfo *cached_master = thread_->cached_master();
+    if (cached_master) {
+      argv.push_back(cached_master->run_id);
+      argv.push_back(std::to_string(cached_master->reploff));
+    } else {
+      argv.push_back("?");
+      argv.push_back(std::to_string(-1));
+    } 
+    SerializeRedisCommand(argv, &wbuf);
+    s = redis_cli_->Send(&wbuf);
+    return s.ok() ? kPsyncWaitReply : kPsyncWriteError;
+  } 
+
+  s = redis_cli_->Recv(&argv);   
+  if (!s.ok() || argv.empty()) {
+    return kPsyncWaitReply;   
+  }
+  pink_epoll()->PinkDelEvent(redis_cli_->fd());
+
+  if (argv[0] == "FULLRESYNC") {
+    if (argv.size() < 3) {
+      memset(cached_master->run_id, 0, sizeof(cached_master->run_id)); 
+    } else {
+      memcpy(cached_master->run_id, argv[1].data(), argv[1].size());
+      cached_master->repl_init_offset = strtoll(argv[2].c_str(), NULL, 10);
+    }     
+    thread_->ClearCachedMaster();
+    return kPsyncFullResync;
+  } else if (argv[0] == "CONTINUE") {
+    //TODO
+    //master id change
+    if (argv[1] != cached_master->run_id) {
+      LOG(WARNING) << "Master replication ID Change to " << argv[1];
+    }
+    thread_->set_repl_state(kReplConnected);
+    pink_epoll()->PinkAddEvent(redis_cli_->fd(), EPOLLIN);
+    return kPsyncContinue; 
+  } else if (argv[0] == "NOMASTERLINK" || argv[0] == "LOADING") {
+    return kPsyncTryLater;   
+  }
+  if (argv[0] != "ERR") {
+    LOG(WARNING) << "Unexpected reply to PSYNC from master:" << argv[0];
+  } else {
+    char buf[256];
+    sprintf(buf, "Master does not support PSYNC or is in error state (reply: %s)", argv[0].c_str());
+    LOG(INFO) << buf; 
+  }
+  thread_->ClearCachedMaster();
+  return kPsyncNotSupported;
 }
 bool PikaSyncRedisConn::SetRedisAsMaster(const std::string& ip, int port) {
   slash::Status s = redis_cli_->Connect(ip, port); 
@@ -312,7 +373,6 @@ void *PikaSlaveofRedisThread::ThreadMain() {
           } else if (write_status == kWriteError) {
             should_close = 1;
           }
-
         }
 
         if ((pfe->mask & EPOLLERR) || (pfe->mask & EPOLLHUP) || should_close) {

@@ -25,7 +25,7 @@ namespace monica {
 using namespace pink;
 
 const size_t kReplSyncioTimeout = 10 * 1000; // repl read、write timeout
-
+const size_t kConfigRunIdSize = 40;
 
 enum ReplState {
   kReplNone = 0,
@@ -55,6 +55,17 @@ enum PsyncState {
   kPsyncTryLater 
 };
 
+struct ReplInfo {
+  uint64_t read_reploff;  
+  uint64_t reploff;
+  uint64_t repl_ack_off;
+  uint64_t repl_ack_time;
+  uint64_t repl_init_offset;
+  uint64_t repl_transfer_size;
+  uint64_t repl_transfer_read;
+  char run_id[kConfigRunIdSize + 1];
+};
+
 class PikaSlaveofRedisThread;
 
 class PikaSyncRedisConn : public PinkConn {
@@ -75,14 +86,14 @@ class PikaSyncRedisConn : public PinkConn {
     std::string master_ip_;
     int master_port_;
     //char run_id[40 + 1];  
-    
+
 };
 
 class PikaSlaveofRedisThread : public Thread {
   public:
     PikaSlaveofRedisThread(int cron_interval = 1000)
-     : pink_epoll_(new PinkEpoll()), cron_interval_(cron_interval) {
-    }
+      : pink_epoll_(new PinkEpoll()), cron_interval_(cron_interval) {
+      }
     virtual ~PikaSlaveofRedisThread() {
       delete pink_epoll_; 
     }
@@ -105,14 +116,6 @@ class PikaSlaveofRedisThread : public Thread {
     void DoCronTask() {
       //nothing to do
     }
-    struct ReplInfo {
-      uint64_t read_reploff;  
-      uint64_t reploff;
-      uint64_t repl_ack_off;
-      uint64_t repl_ack_time;
-      uint64_t repl_init_offset;
-      char run_id[40 + 1];
-    };
 
     ReplState repl_state() const {
       return repl_state_;
@@ -128,6 +131,15 @@ class PikaSlaveofRedisThread : public Thread {
       psync_state_ = state; 
     } 
     slash::Status CreateRdbFile();
+    
+    ReplInfo *cached_master() {
+      return cached_master_;
+    }
+    void ClearCachedMaster() {
+      delete cached_master_; 
+      cached_master_ = nullptr;
+    }
+     
   private:  
     virtual void* ThreadMain();
     // epoll handler
@@ -140,8 +152,10 @@ class PikaSlaveofRedisThread : public Thread {
     std::string master_ip_;
     int master_port_;
     PsyncState psync_state_;
+
+    int64_t master_init_offset; 
     ReplInfo curr;
-    ReplInfo cache_master;
+    ReplInfo *cached_master_;
 
     mutable slash::RWMutex rwlock_;
     std::queue<std::shared_ptr<PinkConn>> conn_queue_; 
