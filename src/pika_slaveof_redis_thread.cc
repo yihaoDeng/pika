@@ -1,39 +1,197 @@
 #include "include/pika_slaveof_redis_thread.h"
 
+extern PikaServer* g_pika_server;
+extern PikaConf* g_pika_conf;
+
 namespace monica {
 
 using namespace pink;
+using namespace slash;
 
 
-PikaRedisMasterConn::PikaRedisMasterConn(PinkEpoll* pink_epoll, void *specific_data)
-      : PinkConn(-1, "", NULL, pink_epoll), 
-        redis_cli_(NewRedisCli()), state_(kReplNone) {
-      }
-
-ReadStatus PikaRedisMasterConn::GetRequest() {
-  return kReadError;   
+PikaSyncRedisConn::PikaSyncRedisConn(
+    PinkEpoll* pink_epoll, void *specific_data,
+    PikaSlaveofRedisThread *thread)
+  : PinkConn(-1, "", NULL, pink_epoll), 
+  redis_cli_(NewRedisCli()), thread_(thread) {
+  }
+PikaSyncRedisConn::~PikaSyncRedisConn() {
+  thread_->ResetRepl();
+  delete redis_cli_; 
+  delete redis_conn_;
 }
-WriteStatus PikaRedisMasterConn::SendReply() {
-  if (state_ == kReplNone) {
+ReadStatus PikaSyncRedisConn::GetRequest() {
+  pink::RedisCmdArgsType argv;
+  slash::Status s;
+  ReplState state = thread_->repl_state();
+  if (state == kReplRecvPong) {
+    s = redis_cli_->Recv(&argv); 
+    if (!s.ok() && argv[0] != "NOAUTH" && argv[0] != "ERR operation not permitted") {
+      return kReadError;
+    } else {
+      state = kReplSendAuth; 
+    }
+  } else if (state == kReplRecvAuth) {
+    s = redis_cli_->Recv(&argv); 
+    if (!s.ok() || argv[0] != "OK") {
+      return kReadError; 
+    }
+    state = kReplSendPort;
+  } else if (state == kReplRecvPort) {
+    s = redis_cli_->Recv(&argv);
+    if (!s.ok()) {
+      LOG(WARNING) << "Recv send-port response err:" << s.ToString();
+      return kReadError; 
+    }
+    if (argv[0] != "OK") {
+      LOG(WARNING) << "(Non critical) Master does not understand "
+        << "REPLCONF listening-port:" << argv[0];
+    } 
+    state = kReplSendIp;
+  } else if (state == kReplRecvIp) {
+    s = redis_cli_->Recv(&argv); 
+    if (!s.ok()) {
+      LOG(WARNING) << "Recv send-ip response err:" << s.ToString();
+      return kReadError; 
+    } 
+    if (argv[0] != "OK") {
+      LOG(WARNING) << "(Non critical) Master does not understand "
+        << "REPLCONF ip-address" << argv[0];
+    } 
+    state = kReplSendCapa;
+  } else if (state == kReplRecvCapa) {
+    s = redis_cli_->Recv(&argv); 
+    if (!s.ok()) {
+      LOG(WARNING) << "Recv REPLCONF capa  response err:" << s.ToString();
+      return kReadError; 
+    }
+    state = kReplSendPsync; 
+  }
+  thread_->set_repl_state(state);
+  set_is_reply(true);
+  return kReadAll;   
+}
+
+WriteStatus PikaSyncRedisConn::SendReply() {
+  pink::RedisCmdArgsType argv;
+  std::string wbuf_str;
+  slash::Status s;
+
+  ReplState state = thread_->repl_state();
+  if (state == kReplNone) {
     return kWriteError;
-  } 
-  if (state_ == kReplConnecting) {
+  } else if (state == kReplConnecting) {
     pink_epoll()->PinkModEvent(redis_cli_->fd(), 0, EPOLLIN); 
-    state_ = kReplRecvPong;
-  } 
+    //setup timeout and sync write, 
+    argv.push_back("PING");
+    SerializeRedisCommand(argv, &wbuf_str);
+    s = redis_cli_->Send(&wbuf_str); 
+    if (!s.ok()) {
+      return kWriteError;
+    }
+    thread_->set_repl_state(kReplRecvPong);
+    return kWriteAll;
+  } else if (state == kReplSendAuth) {
+    if (g_pika_conf->masterauth().empty()) {
+      state = kReplSendPort;
+    } else {
+      argv.push_back("AUTH"); 
+      argv.push_back(g_pika_conf->masterauth()); 
+      SerializeRedisCommand(argv, &wbuf_str);
+      s = redis_cli_->Send(&wbuf_str);
+      if (!s.ok()) {
+        return kWriteError;
+      }
+      thread_->set_repl_state(kReplRecvAuth);
+      return kWriteAll;
+    }
+  }
+
+  if (state == kReplSendPort) {
+    argv.push_back("REPLCONF"); 
+    argv.push_back("listening-port");
+    argv.push_back(std::to_string(g_pika_conf->port()));
+    SerializeRedisCommand(argv, &wbuf_str);
+    s = redis_cli_->Send(&wbuf_str);
+    if (!s.ok()) {
+      return kWriteError; 
+    } 
+    thread_->set_repl_state(kReplRecvPort);
+    return kWriteAll;
+  } else if (state == kReplSendIp) {
+    std::string host = g_pika_server->host();
+    argv.push_back("REPLCONf");  
+    argv.push_back("ip-address");
+    argv.push_back(host);
+    SerializeRedisCommand(argv, &wbuf_str);
+    s = redis_cli_->Send(&wbuf_str);
+    if (!s.ok()) {
+      return kWriteError;
+    }
+    thread_->set_repl_state(kReplRecvIp);
+    return kWriteAll;
+  } else if (state == kReplSendCapa) {
+    argv.push_back("REPLCONF");
+    argv.push_back("capa");
+    argv.push_back("eof");
+    argv.push_back("capa");
+    argv.push_back("psync2");
+    SerializeRedisCommand(argv, &wbuf_str);
+    s = redis_cli_->Send(&wbuf_str);
+    if (!s.ok()) {
+      return kWriteError;
+    }
+    thread_->set_repl_state(kReplRecvCapa);
+    return kWriteAll;
+  } else if (state == kReplSendPsync) {
+    thread_->set_psync_state(TryPartialResync(false));  
+    if (thread_->psync_state() == kPsyncWriteError) {
+      return kWriteError;
+    }
+    thread_->set_repl_state(kReplRecvPsync);
+    return kWriteAll;
+  }
+
+  if (state != kReplRecvPsync) {
+    return kWriteError;
+  }
+
+  thread_->set_psync_state(TryPartialResync(true));
+  PsyncState psync_state = thread_->psync_state();
+  if (psync_state == kPsyncWaitReply || psync_state == kPsyncContinue) {
+    return kWriteAll;
+  } else if (psync_state == kPsyncTryLater) {
+    return kWriteError;
+  } else if (psync_state == kPsyncNotSupported) {
+    argv.clear();  
+    argv.push_back("SYNC");
+    SerializeRedisCommand(argv, &wbuf_str); 
+    s = redis_cli_->Send(&wbuf_str);
+    if (!s.ok()) {
+      return kWriteError;
+    }
+  }  
+  s = thread_->CreateRdbFile();
+  if (!s.ok()) {
+    return kWriteError;
+  }
   return kWriteAll;
 }
 
-bool PikaRedisMasterConn::SetRedisMaster(const std::string& ip, int port) {
+PsyncState PikaSyncRedisConn::TryPartialResync(bool read_reply) {
+  return kPsyncNotSupported;    
+}
+bool PikaSyncRedisConn::SetRedisAsMaster(const std::string& ip, int port) {
   slash::Status s = redis_cli_->Connect(ip, port); 
-  if (s.ok()) {
-    state_ = kReplConnecting;
-    return true;
+  if (!s.ok()) {
+    return false;
   } 
+  master_ip_ = ip;
+  master_port_ = port;
   set_fd(redis_cli_->fd());    
-  //SetNonblock(); 
-  //pink_epoll()->PinkModEvent(redis_cli_->fd(), 0, EPOLLOUT | EPOLLIN); 
-  return false;
+  redis_cli_->set_recv_timeout(kReplSyncioTimeout);
+  redis_cli_->set_send_timeout(kReplSyncioTimeout);
+  return true;
 }
 
 void *PikaSlaveofRedisThread::ThreadMain() {
@@ -84,6 +242,7 @@ void *PikaSlaveofRedisThread::ThreadMain() {
                 conn_queue_.pop();
                 pink_epoll_->notify_queue_unlock();
               }
+
               {
                 slash::WriteLock l(&rwlock_);
                 conns_[conn->fd()] = conn;
@@ -92,28 +251,7 @@ void *PikaSlaveofRedisThread::ThreadMain() {
                 continue;
               }   
               // read or write event 
-              pink_epoll_->PinkAddEvent(ti.fd(), EPOLLIN | EPOLLOUT);
-              //if (ti.notify_type() == kNotiConnect) {
-              //  std::shared_ptr<PinkConn> tc = conn_factory_->NewPinkConn(
-              //      ti.fd(), ti.ip_port(),
-              //      server_thread_, private_data_, pink_epoll_);
-              //  if (!tc || !tc->SetNonblock()) {
-              //    continue;
-              //  }
-
-              //  {
-              //    slash::WriteLock l(&rwlock_);
-              //    conns_[ti.fd()] = tc;
-              //  }
-              //} else if (ti.notify_type() == kNotiClose) {
-              //  // should close?
-              //} else if (ti.notify_type() == kNotiEpollout) {
-              //  pink_epoll_->PinkModEvent(ti.fd(), 0, EPOLLOUT);
-              //} else if (ti.notify_type() == kNotiEpollin) {
-              //  pink_epoll_->PinkModEvent(ti.fd(), 0, EPOLLIN);
-              //} else if (ti.notify_type() == kNotiEpolloutAndEpollin) {
-              //  pink_epoll_->PinkModEvent(ti.fd(), 0, EPOLLOUT | EPOLLIN);
-              //}
+              pink_epoll_->PinkAddEvent(conn->fd(), EPOLLIN | EPOLLOUT);
             }
           }
         } else {
@@ -148,16 +286,33 @@ void *PikaSlaveofRedisThread::ThreadMain() {
 
         if (!should_close && (pfe->mask & EPOLLIN)) {
           ReadStatus read_status = in_conn->GetRequest();
-          in_conn->set_last_interaction(now);
-          if (read_status == kReadAll) {
-            pink_epoll_->PinkModEvent(pfe->fd, 0, 0);
-            // Wait for the conn complete asynchronous task and
-            // Mod Event to EPOLLOUT
-          } else if (read_status == kReadHalf) {
-            continue;
+          if (read_status != kReadAll || read_status != kReadHalf) {
+            should_close = 1;
+          } else if (in_conn->is_reply()) {
+            WriteStatus write_status = in_conn->SendReply();
+            if (write_status == kWriteAll) {
+              in_conn->set_is_reply(false);
+            } else if (write_status == kWriteHalf) {
+              pink_epoll_->PinkModEvent(pfe->fd, EPOLLIN, EPOLLOUT);
+            } else if (write_status == kWriteError) {
+              should_close = 1;
+            }
           } else {
+            continue;
+          }
+        }
+        if (pfe->mask & EPOLLOUT) {
+          WriteStatus write_status = in_conn->SendReply();
+          in_conn->set_last_interaction(now);
+          if (write_status == kWriteAll) {
+            in_conn->set_is_reply(false);
+            pink_epoll_->PinkModEvent(pfe->fd, 0, EPOLLIN);
+          } else if (write_status == kWriteHalf) {
+            continue;
+          } else if (write_status == kWriteError) {
             should_close = 1;
           }
+
         }
 
         if ((pfe->mask & EPOLLERR) || (pfe->mask & EPOLLHUP) || should_close) {
@@ -175,6 +330,12 @@ void *PikaSlaveofRedisThread::ThreadMain() {
 
   Cleanup();
   return NULL;
+}
+
+slash::Status PikaSlaveofRedisThread::CreateRdbFile() {
+  char buf[256]; 
+  snprintf(buf, 256, "temp-%ld.%s.%d.rdb", slash::NowMicros(), master_ip_.c_str(), master_port_);
+  return slash::NewWritableFile(g_pika_conf->bgsave_path() + buf, &rdb_file_);
 }
 void PikaSlaveofRedisThread::Cleanup() { 
   slash::WriteLock l(&rwlock_);

@@ -6,18 +6,26 @@
 #include "pink/include/pink_thread.h"
 #include "pink/include/pink_conn.h" 
 #include "pink/include/pink_cli.h"
+#include "pink/include/redis_cli.h"
 #include "pink/include/pink_thread.h"
 #include "slash/include/slash_mutex.h"
 #include "include/pika_client_conn.h"
 #include "include/pika_define.h"
+#include "include/pika_conf.h"
+#include "include/pika_server.h"
 #include "slash/include/slash_status.h"
 #include "slash/include/slash_slice.h"
+#include "slash/include/env.h"
+
+extern PikaServer* g_pika_server;
+extern PikaConf* g_pika_conf;
 
 namespace monica {
 
 using namespace pink;
 
-const size_t kReplSyncioTimeout = 10;
+const size_t kReplSyncioTimeout = 10 * 1000; // repl read、write timeout
+
 
 enum ReplState {
   kReplNone = 0,
@@ -38,26 +46,36 @@ enum ReplState {
   kReplConnected
 };
 
-class PikaRedisMasterConn : public PinkConn {
-  public:   
-    PikaRedisMasterConn(PinkEpoll* pink_epoll, void *worker_specific_data);
+enum PsyncState {
+  kPsyncWriteError = 0, 
+  kPsyncWaitReply,
+  kPsyncContinue,
+  kPsyncFullResync,
+  kPsyncNotSupported,
+  kPsyncTryLater 
+};
 
-    virtual ~PikaRedisMasterConn() {
-      delete redis_cli_; 
-      delete redis_conn_;
-    } 
+class PikaSlaveofRedisThread;
+
+class PikaSyncRedisConn : public PinkConn {
+  public:   
+    PikaSyncRedisConn(PinkEpoll* pink_epoll, void *worker_specific_data, PikaSlaveofRedisThread *thread);
+
+    virtual ~PikaSyncRedisConn();
     virtual ReadStatus GetRequest();   
     virtual WriteStatus SendReply();
 
-    bool SetRedisMaster(const std::string& ip, int port); 
-    ReplState repl_state() {
-      return state_;
-    } 
+    bool SetRedisAsMaster(const std::string& ip, int port); 
+
+    PsyncState TryPartialResync(bool read_reply);  
   private:
     PinkCli* redis_cli_;
-    ReplState state_;
     PinkConn* redis_conn_;
-    char run_id[40 + 1];  
+    PikaSlaveofRedisThread *thread_; 
+    std::string master_ip_;
+    int master_port_;
+    //char run_id[40 + 1];  
+    
 };
 
 class PikaSlaveofRedisThread : public Thread {
@@ -69,8 +87,8 @@ class PikaSlaveofRedisThread : public Thread {
       delete pink_epoll_; 
     }
     bool SetMaster(const std::string &ip, int port) {
-      PikaRedisMasterConn *conn = new PikaRedisMasterConn(pink_epoll_, NULL);  
-      if (!conn->SetRedisMaster(ip, port)) {
+      PikaSyncRedisConn *conn = new PikaSyncRedisConn(pink_epoll_, NULL, this);  
+      if (!conn->SetRedisAsMaster(ip, port)) {
         return false;
       } 
       pink_epoll_->notify_queue_lock(); 
@@ -79,21 +97,57 @@ class PikaSlaveofRedisThread : public Thread {
       write(pink_epoll_->notify_send_fd(), "", 1);
       return true;
     }
+    void ResetRepl() {
+      delete rdb_file_;
+      repl_state_ = kReplConnect;
+    }
     void Cleanup();
     void DoCronTask() {
       //nothing to do
     }
+    struct ReplInfo {
+      uint64_t read_reploff;  
+      uint64_t reploff;
+      uint64_t repl_ack_off;
+      uint64_t repl_ack_time;
+      uint64_t repl_init_offset;
+      char run_id[40 + 1];
+    };
+
+    ReplState repl_state() const {
+      return repl_state_;
+    } 
+    void set_repl_state(ReplState state) {
+      repl_state_ = state; 
+    }
+
+    PsyncState psync_state() const {
+      return psync_state_;
+    }
+    void set_psync_state(PsyncState state) {
+      psync_state_ = state; 
+    } 
+    slash::Status CreateRdbFile();
   private:  
     virtual void* ThreadMain();
     // epoll handler
     pink::PinkEpoll *pink_epoll_;
-
     int cron_interval_;
-    //No copy allowed
+
+    ReplState repl_state_;
+
+    slash::WritableFile *rdb_file_;
+    std::string master_ip_;
+    int master_port_;
+    PsyncState psync_state_;
+    ReplInfo curr;
+    ReplInfo cache_master;
+
     mutable slash::RWMutex rwlock_;
     std::queue<std::shared_ptr<PinkConn>> conn_queue_; 
     std::map<int, std::shared_ptr<PinkConn>> conns_;
 
+    //No copy allowed
     PikaSlaveofRedisThread(const PikaSlaveofRedisThread&);
     void operator=(const PikaSlaveofRedisThread&); 
 };  
